@@ -18,6 +18,7 @@ tab_deactivation_frames = 5
 scroll_deactivation_frames = 5
 smoothing_factor = 0.25
 precise_smoothing_factor = 0.025
+click_delay_frames = 7
 
 # Initialize MediaPipe Hands
 mp_hands = mp.solutions.hands
@@ -31,6 +32,7 @@ double_clicked = False
 mouse_up_frames = 0
 alttab_up_frames = 0
 not_scrolling_frames = 0
+click_delay_counter = 0
 
 # OpenCV setup
 cap = cv2.VideoCapture(0)
@@ -92,7 +94,7 @@ while cap.isOpened():
         pinky_finger_tip.y = (pinky_finger_tip.y * 2) - 0.5
 
         distance = ((thumb_tip.x - index_finger_tip.x)**2 + (thumb_tip.y - index_finger_tip.y)**2)**0.5
-        click_distance = ((thumb_tip.x - middle_finger_tip.x)**2 + (thumb_tip.y - middle_finger_tip.y)**2)**0.5
+        middlefinger_distance = ((thumb_tip.x - middle_finger_tip.x)**2 + (thumb_tip.y - middle_finger_tip.y)**2)**0.5
         tab_distance = ((thumb_tip.x - ring_finger_tip.x)**2 + (thumb_tip.y - ring_finger_tip.y)**2)**0.5
         scroll_distance = ((index_finger_tip.x - middle_finger_tip.x)**2 + (index_finger_tip.y - middle_finger_tip.y)**2)**0.5
         listen_distance = ((pinky_finger_tip.x - thumb_tip.x)**2 + (pinky_finger_tip.y - thumb_tip.y)**2)**0.5
@@ -107,8 +109,25 @@ while cap.isOpened():
             smoothed_x = precise_smoothing_factor * target_x + (1 - precise_smoothing_factor) * smoothed_x
             smoothed_y = precise_smoothing_factor * target_y + (1 - precise_smoothing_factor) * smoothed_y
 
-        if not scrolling and not double_clicked:
+        if not scrolling and not double_clicked and click_delay_counter == 0:
             pyautogui.moveTo(smoothed_x, smoothed_y, 0)
+
+        if distance < click_activation_distance and not mouse_down and not minimize_window and not double_clicked:
+            click_delay_counter += 1
+            if click_delay_counter > click_delay_frames:
+                mouse_down = True
+                pyautogui.mouseDown()
+                click_delay_counter = 0
+        elif mouse_down and distance <= click_deactivation_distance and mouse_up_frames > 0:
+            mouse_up_frames = 0
+        elif  distance > click_deactivation_distance and click_delay_counter > 0:
+            pyautogui.click()
+            click_delay_counter = 0
+        elif  distance > click_deactivation_distance and mouse_down:
+            mouse_up_frames += 1
+            if mouse_up_frames > click_deactivation_frames:
+                mouse_down = False
+                pyautogui.mouseUp()
 
         if tab_distance < tab_activation_distance and ring_finger_tip.y > thumb_tip.y and not minimize_window and not mouse_down:
             window = gw.getWindowsAt(smoothed_x, smoothed_y)
@@ -118,22 +137,11 @@ while cap.isOpened():
         elif tab_distance > tab_deactivation_distance and minimize_window:
             minimize_window = False
 
-        if click_distance < click_activation_distance and not double_clicked and not mouse_down:
+        if middlefinger_distance < click_activation_distance and not double_clicked and not mouse_down:
             double_clicked = True
             pyautogui.doubleClick()
-        elif click_distance > click_deactivation_distance and double_clicked:
+        elif middlefinger_distance > click_deactivation_distance and double_clicked:
             double_clicked = False
-
-        if (click_distance < click_activation_distance or distance < click_activation_distance) and not mouse_down and not minimize_window and not double_clicked:
-            mouse_down = True
-            pyautogui.mouseDown()
-        elif mouse_down and (click_distance <= click_deactivation_distance or distance <= click_deactivation_distance) and mouse_up_frames > 0:
-            mouse_up_frames = 0
-        elif (click_distance > click_deactivation_distance and distance > click_deactivation_distance) and mouse_down:
-            mouse_up_frames += 1
-            if mouse_up_frames > click_deactivation_frames:
-                mouse_down = False
-                pyautogui.mouseUp()
 
         if tab_distance < tab_activation_distance and ring_finger_tip.y <= thumb_tip.y and not alttab_down:
             alttab_down = True
