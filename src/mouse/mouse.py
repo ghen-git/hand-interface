@@ -1,7 +1,9 @@
+from types import SimpleNamespace
 import mediapipe as mp
 import pyautogui
 
-from hand_helper.hand_helper import scale_coords, scale
+from hand_helper.hand_helper import scale_coords, scale, scale_coords_by
+from src.gusts.gusts import gusts_gestures
 
 # gesture parameters
 click_activation_distance = 0.07 * (scale/2)
@@ -12,10 +14,10 @@ scroll_deactivation_distance = 0.08 * (scale/2)
 click_deactivation_frames = 5
 scroll_deactivation_frames = 10
 smoothing_factor = 0.25 * (1/(scale/2))
-precise_smoothing_factor = 0.175 * (1/(scale/2))
+precise_smoothing_factor = 0.025 * (1/(scale/2))
 click_delay_frames = 7
 click_position_lookbehind = 4
-
+precise_scale = 1.5
 
 # states
 mouse_down = False
@@ -24,6 +26,8 @@ alttab_down = False
 minimize_window = False
 scrolling = False
 double_clicked = False
+toggled_gusts = False
+enable_gusts = False
 mouse_up_frames = 0
 not_scrolling_frames = 0
 click_delay_counter = 0
@@ -43,14 +47,17 @@ def mouse_gestures(hand_landmarks):
     global mouse_down, alttab_down, minimize_window, scrolling, double_clicked, mouse_up_frames
     global not_scrolling_frames, click_delay_counter, smoothed_x, smoothed_y, scroll_base_x, scroll_base_y, previous_positions_buffer
     global pp_buffer_index, screen_width, screen_height, disable_scroll, mouse_down_right, rclick_delay_counter
+    global toggled_gusts, enable_gusts
     thumb_tip = scale_coords(hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP])
     index_finger_tip = scale_coords(hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP])
     middle_finger_tip = scale_coords(hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP])
     ring_finger_tip = scale_coords(hand_landmarks.landmark[mp_hands.HandLandmark.RING_FINGER_TIP])
+    pinky_tip = scale_coords(hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP])
 
     pointer_distance = ((thumb_tip.x - index_finger_tip.x)**2 + (thumb_tip.y - index_finger_tip.y)**2)**0.5
     middle_distance = ((thumb_tip.x - middle_finger_tip.x)**2 + (thumb_tip.y - middle_finger_tip.y)**2)**0.5
     ring_distance = ((thumb_tip.x - ring_finger_tip.x)**2 + (thumb_tip.y - ring_finger_tip.y)**2)**0.5
+    pinky_distance = ((thumb_tip.x - pinky_tip.x)**2 + (thumb_tip.y - pinky_tip.y)**2)**0.5
     pointermid_distance = ((index_finger_tip.x - middle_finger_tip.x)**2 + (index_finger_tip.y - middle_finger_tip.y)**2)**0.5
 
     target_x = int((1 - (middle_finger_tip.x + thumb_tip.x)/2) * screen_width)
@@ -117,6 +124,15 @@ def mouse_gestures(hand_landmarks):
         pyautogui.doubleClick()
     elif middle_distance > click_deactivation_distance and double_clicked:
         double_clicked = False
+
+    if enable_gusts:
+        gusts_gestures(hand_landmarks)
+
+    if pinky_distance < click_activation_distance and not toggled_gusts and not mouse_down:
+        toggled_gusts = True
+        enable_gusts = not enable_gusts
+    elif pinky_distance > click_deactivation_distance and toggled_gusts:
+        toggled_gusts = False
 
     if scrolling:
         x_difference = index_finger_tip.x - scroll_base_x

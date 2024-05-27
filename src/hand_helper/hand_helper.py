@@ -2,7 +2,7 @@ import mediapipe as mp
 mp_hands = mp.solutions.hands
 from types import SimpleNamespace
 
-scale = 3
+scale = 2
 
 def rotation(hand_landmarks):
     p1, p2, p3 = hand_landmarks.landmark[mp_hands.HandLandmark.WRIST], hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_MCP], hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_MCP]
@@ -12,4 +12,7 @@ def rotation(hand_landmarks):
     return tuple(normal_i/normal_mag for normal_i in normal)
 
 def scale_coords(base_coords):
+    return SimpleNamespace(x=(base_coords.x * scale) - (0.5 * (scale-1)), y=(base_coords.y * scale) - (0.5 * (scale-1)))
+
+def scale_coords_by(base_coords, scale):
     return SimpleNamespace(x=(base_coords.x * scale) - (0.5 * (scale-1)), y=(base_coords.y * scale) - (0.5 * (scale-1)))

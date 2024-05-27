@@ -1,1 +1,1 @@
-py python_beta.py
+py src/main.py
