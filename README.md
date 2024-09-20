@@ -33,3 +33,20 @@ To start the mouse mode, write "mouse" in the terminal after the program has fin
 
 ### Current Features
 
+##### Modes
+
+Currently 3 modes are *somewhat* implemented, **mouse**, **gusts** and **flicks**. To switch between modes, at any time, tap your pinky and thumb together.
+
+##### Mouse
+
+In this mode your index finger and thumb simulate a mouse:
+
+- **move the cursor**: the cursor is a point between your index finger and thumb, move your hand to control it.
+- **left mouse button**: pinch your index finger and thumb
+- **double click**: tap your middle finger and thumb
+- **right mouse button**: pinch your ring finger and thumb
+- **scroll**: stick out only the index and middle finger and join them, then slowly move them up and down to scroll
+
+##### Gusts & Flicks
+
+These modes respectively move the windows and control the "back" and "forward" commands (i.e moving through pages). I however forgot how I programmed the hand detection, so you can either check the source out or just swing your hand around a bunch and see what happens.
