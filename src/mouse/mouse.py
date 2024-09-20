@@ -3,7 +3,7 @@ import mediapipe as mp
 import pyautogui
 
 from hand_helper.hand_helper import scale_coords, scale, scale_coords_by
-from src.gusts.gusts import gusts_gestures
+from gusts.gusts import flicks, gusts, gusts_gestures
 
 # gesture parameters
 click_activation_distance = 0.07 * (scale/2)
@@ -27,7 +27,7 @@ minimize_window = False
 scrolling = False
 double_clicked = False
 toggled_gusts = False
-enable_gusts = False
+gusts_mode = 0
 mouse_up_frames = 0
 not_scrolling_frames = 0
 click_delay_counter = 0
@@ -47,7 +47,8 @@ def mouse_gestures(hand_landmarks):
     global mouse_down, alttab_down, minimize_window, scrolling, double_clicked, mouse_up_frames
     global not_scrolling_frames, click_delay_counter, smoothed_x, smoothed_y, scroll_base_x, scroll_base_y, previous_positions_buffer
     global pp_buffer_index, screen_width, screen_height, disable_scroll, mouse_down_right, rclick_delay_counter
-    global toggled_gusts, enable_gusts
+    global toggled_gusts, gusts_mode
+
     thumb_tip = scale_coords(hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP])
     index_finger_tip = scale_coords(hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP])
     middle_finger_tip = scale_coords(hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP])
@@ -62,6 +63,20 @@ def mouse_gestures(hand_landmarks):
 
     target_x = int((1 - (middle_finger_tip.x + thumb_tip.x)/2) * screen_width)
     target_y = int((middle_finger_tip.y + thumb_tip.y)/2 * screen_height)
+
+    if pinky_distance < click_activation_distance and not toggled_gusts and not mouse_down:
+        toggled_gusts = True
+        gusts_mode = (gusts_mode + 1) % 3
+        print("gusts: ", gusts_mode)
+    elif pinky_distance > click_deactivation_distance and toggled_gusts:
+        toggled_gusts = False
+    
+    if gusts_mode > 0:
+        if gusts_mode == 1:
+            gusts(hand_landmarks)
+        else:
+            flicks(hand_landmarks)
+        return
 
     if middle_finger_tip.y <= thumb_tip.y:
         smoothed_x = smoothing_factor * target_x + (1 - smoothing_factor) * smoothed_x
@@ -124,15 +139,6 @@ def mouse_gestures(hand_landmarks):
         pyautogui.doubleClick()
     elif middle_distance > click_deactivation_distance and double_clicked:
         double_clicked = False
-
-    if enable_gusts:
-        gusts_gestures(hand_landmarks)
-
-    if pinky_distance < click_activation_distance and not toggled_gusts and not mouse_down:
-        toggled_gusts = True
-        enable_gusts = not enable_gusts
-    elif pinky_distance > click_deactivation_distance and toggled_gusts:
-        toggled_gusts = False
 
     if scrolling:
         x_difference = index_finger_tip.x - scroll_base_x

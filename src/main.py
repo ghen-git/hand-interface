@@ -5,6 +5,11 @@ from mouse.mouse import mouse_gestures
 from mouse.mouse import disable_scroll
 from gusts.gusts import gusts_gestures
 import threading
+import win32gui
+import win32con
+
+hwnd = win32gui.GetForegroundWindow()
+win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
 
 mode = "none"
 mp_hands = mp.solutions.hands
