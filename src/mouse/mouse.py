@@ -2,7 +2,7 @@ from types import SimpleNamespace
 import mediapipe as mp
 import pyautogui
 
-from hand_helper.hand_helper import scale_coords, scale, scale_coords_by
+from hand_helper.hand_helper import scale_coords, scale
 from gusts.gusts import flicks, gusts, gusts_gestures
 
 # gesture parameters

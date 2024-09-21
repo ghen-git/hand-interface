@@ -1,19 +1,20 @@
 import cv2
 import mediapipe as mp
 import pyautogui
-from mouse.mouse import mouse_gestures
-from mouse.mouse import disable_scroll
-from gusts.gusts import gusts_gestures
 import threading
 import win32gui
 import win32con
+from mouse.mouse import mouse_gestures
+from mouse.mouse import disable_scroll
+from gusts.gusts import gusts_gestures
+from double_hand_gestures.pause_detection import check_pause_gesture, get_should_pause
 
 hwnd = win32gui.GetForegroundWindow()
 win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
 
 mode = "none"
 mp_hands = mp.solutions.hands
-hands_detector = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.5, min_tracking_confidence=0.5)
+hands_detector = mp_hands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.75, min_tracking_confidence=0.75)
 
 def find_hands(frame):
     height, width, _ = frame.shape
@@ -38,6 +39,7 @@ def change_mode(stop):
             print(f"Mode changed to: {mode}")
 
 def main():
+    global mode
     cap = cv2.VideoCapture(0)
     pyautogui.PAUSE = 0
     pyautogui.FAILSAFE = False
@@ -53,6 +55,13 @@ def main():
         results = find_hands(frame)
         if results.multi_hand_landmarks:
             hand_landmarks = results.multi_hand_landmarks[0]
+            hand_count = len(results.multi_hand_landmarks) 
+
+            if hand_count == 2 and check_pause_gesture(results.multi_hand_landmarks, results.multi_handedness):
+                if get_should_pause():
+                    mode = "pause"
+                else:
+                    mode = "mouse"
 
             if mode == "mouse":
                 mouse_gestures(hand_landmarks)

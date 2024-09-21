@@ -2,5 +2,4 @@ opencv-python
 mediapipe
 pyautogui
 psutil
-win32gui
-win32
+pywin32
