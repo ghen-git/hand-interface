@@ -4,27 +4,19 @@ import pyautogui
 import threading
 import win32gui
 import win32con
+import time
+import numpy as np
+
 from mouse.mouse import mouse_gestures
 from mouse.mouse import disable_scroll
 from gusts.gusts import gusts_gestures
 from double_hand_gestures.pause_detection import check_pause_gesture, get_should_pause
+from multithreaded_hand_processing import get_first_frame_hands, start_processing_thread, find_hands, init_frame_queue
 
 hwnd = win32gui.GetForegroundWindow()
 win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
 
 mode = "none"
-mp_hands = mp.solutions.hands
-hands_detector = mp_hands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.75, min_tracking_confidence=0.75)
-
-def find_hands(frame):
-    height, width, _ = frame.shape
-    new_height = height // 2
-    new_width = width // 2
-    resized_frame = cv2.resize(frame, (new_width, new_height))
-
-    rgb_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB)
-    rgb_frame.flags.writeable = False
-    return hands_detector.process(rgb_frame)
 
 def change_mode(stop):
     global mode, disable_scroll
@@ -38,9 +30,14 @@ def change_mode(stop):
             mode = new_mode
             print(f"Mode changed to: {mode}")
 
+# Variables for calculating FPS
+prev_time = 0
+curr_time = 0
+
 def main():
-    global mode
+    global mode, prev_time, curr_time
     cap = cv2.VideoCapture(0)
+    
     pyautogui.PAUSE = 0
     pyautogui.FAILSAFE = False
 
@@ -48,12 +45,19 @@ def main():
     change_mode_thread = threading.Thread(target=change_mode, args=(stop_event,))
     change_mode_thread.start()
 
-    while cap.isOpened():
+    pool_size = 8
+    start_processing_thread(pool_size)
+
+    for i in range(0, pool_size):
         success, frame = cap.read()
-        if not success:
-            break
-        results = find_hands(frame)
-        if results.multi_hand_landmarks:
+        init_frame_queue(frame)
+
+    while mode != "stop":
+        success, frame = cap.read()
+        results = get_first_frame_hands(frame)
+        # results = find_hands(frame)
+
+        if results.multi_hand_landmarks and len(results.multi_hand_landmarks) > 0:
             hand_landmarks = results.multi_hand_landmarks[0]
             hand_count = len(results.multi_hand_landmarks) 
 
@@ -70,11 +74,18 @@ def main():
             elif mode == "combine":
                 mouse_gestures(hand_landmarks)
                 gusts_gestures(hand_landmarks)
+                
+        # Calculate the frame rate (FPS)
+        curr_time = time.time()
+        fps = 1 / (curr_time - prev_time) if prev_time else 0
+        prev_time = curr_time
+
+        print(" " * 50, end="\r")
+        print(int(fps), end="\r")
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-    cap.release()
     stop_event.set()
     change_mode_thread.join()
 

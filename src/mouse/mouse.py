@@ -54,6 +54,7 @@ def mouse_gestures(hand_landmarks):
     middle_finger_tip = scale_coords(hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP])
     ring_finger_tip = scale_coords(hand_landmarks.landmark[mp_hands.HandLandmark.RING_FINGER_TIP])
     pinky_tip = scale_coords(hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP])
+    wrist = scale_coords(hand_landmarks.landmark[mp_hands.HandLandmark.WRIST])
 
     pointer_distance = ((thumb_tip.x - index_finger_tip.x)**2 + (thumb_tip.y - index_finger_tip.y)**2)**0.5
     middle_distance = ((thumb_tip.x - middle_finger_tip.x)**2 + (thumb_tip.y - middle_finger_tip.y)**2)**0.5
