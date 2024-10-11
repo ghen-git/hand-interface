@@ -13,9 +13,9 @@ scroll_activation_distance_from_thumb = 0.1 * (scale/2)
 scroll_deactivation_distance = 0.08 * (scale/2)
 click_deactivation_frames = 5
 scroll_deactivation_frames = 10
-smoothing_factor = 0.25 * (1/(scale/2))
+smoothing_factor = 0.9 * (1/(scale/2))
 precise_smoothing_factor = 0.025 * (1/(scale/2))
-click_delay_frames = 7
+click_delay_frames = 4
 click_position_lookbehind = 4
 precise_scale = 1.5
 

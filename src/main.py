@@ -30,12 +30,10 @@ def change_mode(stop):
             mode = new_mode
             print(f"Mode changed to: {mode}")
 
-# Variables for calculating FPS
-prev_time = 0
-curr_time = 0
+mean_process_time = 0
 
 def main():
-    global mode, prev_time, curr_time
+    global mode, prev_time, curr_time, mean_process_time
     cap = cv2.VideoCapture(0)
     
     pyautogui.PAUSE = 0
@@ -45,7 +43,7 @@ def main():
     change_mode_thread = threading.Thread(target=change_mode, args=(stop_event,))
     change_mode_thread.start()
 
-    pool_size = 8
+    pool_size = 4
     start_processing_thread(pool_size)
 
     for i in range(0, pool_size):
@@ -54,6 +52,7 @@ def main():
 
     while mode != "stop":
         success, frame = cap.read()
+        before_process_time = time.time()
         results = get_first_frame_hands(frame)
         # results = find_hands(frame)
 
@@ -77,11 +76,11 @@ def main():
                 
         # Calculate the frame rate (FPS)
         curr_time = time.time()
-        fps = 1 / (curr_time - prev_time) if prev_time else 0
-        prev_time = curr_time
+        process_time = curr_time - before_process_time
+        mean_process_time = (mean_process_time + process_time) / 2 
 
         print(" " * 50, end="\r")
-        print(int(fps), end="\r")
+        print(mean_process_time, end="\r")
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
