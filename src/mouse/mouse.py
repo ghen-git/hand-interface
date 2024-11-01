@@ -11,12 +11,15 @@ click_deactivation_distance = 0.075 * (scale/2)
 scroll_activation_distance = 0.07 * (scale/2)
 scroll_activation_distance_from_thumb = 0.1 * (scale/2)
 scroll_deactivation_distance = 0.08 * (scale/2)
-click_deactivation_frames = 5
+click_deactivation_frames = 4
 scroll_deactivation_frames = 10
 smoothing_factor = 0.9 * (1/(scale/2))
-precise_smoothing_factor = 0.025 * (1/(scale/2))
-click_delay_frames = 4
-click_position_lookbehind = 4
+precise_smoothing_factor = 0.0125 * (1/(scale/2))
+min_cursor_speed = 1
+max_cursor_speed = 100
+click_delay_frames = 5
+click_position_lookbehind = 5
+cursor_distance_lookbehind = 5
 precise_scale = 1.5
 
 # states
@@ -37,17 +40,25 @@ smoothed_y = 0
 scroll_base_x = 0
 scroll_base_y = 0
 previous_positions_buffer = [(0,0)] * click_position_lookbehind
+cursor_distance_buffer = [0] * cursor_distance_lookbehind
 pp_buffer_index = 0
+cd_buffer_index = 0
+prev_position = (0,0)
 disable_scroll = False
 screen_width, screen_height = pyautogui.size()
 
 mp_hands = mp.solutions.hands
+
+def easingFunction(x):
+    # return x * x # (ease in quad)
+    return x
 
 def mouse_gestures(hand_landmarks):
     global mouse_down, alttab_down, minimize_window, scrolling, double_clicked, mouse_up_frames
     global not_scrolling_frames, click_delay_counter, smoothed_x, smoothed_y, scroll_base_x, scroll_base_y, previous_positions_buffer
     global pp_buffer_index, screen_width, screen_height, disable_scroll, mouse_down_right, rclick_delay_counter
     global toggled_gusts, gusts_mode
+    global cd_buffer_index, cursor_distance_buffer, prev_position
 
     thumb_tip = scale_coords(hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP])
     index_finger_tip = scale_coords(hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP])
@@ -79,17 +90,30 @@ def mouse_gestures(hand_landmarks):
             flicks(hand_landmarks)
         return
 
-    if middle_finger_tip.y <= thumb_tip.y:
-        smoothed_x = smoothing_factor * target_x + (1 - smoothing_factor) * smoothed_x
-        smoothed_y = smoothing_factor * target_y + (1 - smoothing_factor) * smoothed_y
-    else:
-        smoothed_x = precise_smoothing_factor * target_x + (1 - precise_smoothing_factor) * smoothed_x
-        smoothed_y = precise_smoothing_factor * target_y + (1 - precise_smoothing_factor) * smoothed_y
+    # mean_cursor_distance = min(max(sum(cursor_distance_buffer) / cursor_distance_lookbehind, min_cursor_speed), max_cursor_speed)
+    prev_x, prev_y = prev_position
+    mean_cursor_distance = min(max(((prev_x - target_x)**2 + (prev_y - target_y)**2)**0.5, min_cursor_speed), max_cursor_speed)
+    calculated_smoothing_factor = (easingFunction((mean_cursor_distance - min_cursor_speed) / (max_cursor_speed - min_cursor_speed)) * (smoothing_factor - precise_smoothing_factor)) + precise_smoothing_factor
+
+    print(mean_cursor_distance, calculated_smoothing_factor)
+    smoothed_x = calculated_smoothing_factor * target_x + (1 - calculated_smoothing_factor) * smoothed_x
+    smoothed_y = calculated_smoothing_factor * target_y + (1 - calculated_smoothing_factor) * smoothed_y
+
+    # if middle_finger_tip.y <= thumb_tip.y:
+    #     smoothed_x = calculated_smoothing_factor * target_x + (1 - calculated_smoothing_factor) * smoothed_x
+    #     smoothed_y = calculated_smoothing_factor * target_y + (1 - calculated_smoothing_factor) * smoothed_y
+    # else:
+    #     smoothed_x = precise_smoothing_factor * target_x + (1 - precise_smoothing_factor) * smoothed_x
+    #     smoothed_y = precise_smoothing_factor * target_y + (1 - precise_smoothing_factor) * smoothed_y
 
     if not scrolling and click_delay_counter == 0:
         pyautogui.moveTo(smoothed_x, smoothed_y, 0)
         previous_positions_buffer[pp_buffer_index] = (smoothed_x, smoothed_y)
         pp_buffer_index = (pp_buffer_index + 1) % click_position_lookbehind
+        prev_x, prev_y = prev_position
+        # cursor_distance_buffer[cd_buffer_index] = ((prev_x - smoothed_x)**2 + (prev_y - smoothed_y)**2)**0.5
+        # cd_buffer_index = (cd_buffer_index + 1) % cursor_distance_lookbehind
+        prev_position = (target_x, target_y)
 
     if pointer_distance < click_activation_distance and not mouse_down and not minimize_window and not double_clicked:
         click_delay_counter += 1
@@ -107,7 +131,7 @@ def mouse_gestures(hand_landmarks):
     elif  pointer_distance > click_deactivation_distance and mouse_down:
         mouse_up_frames += 1
         if mouse_up_frames > click_deactivation_frames:
-            pp_buffer_x, pp_buffer_y = previous_positions_buffer[(pp_buffer_index - (click_position_lookbehind - 1)) % click_position_lookbehind]
+            pp_buffer_x, pp_buffer_y = previous_positions_buffer[(pp_buffer_index - (click_deactivation_frames - 1)) % click_position_lookbehind]
             pyautogui.moveTo(pp_buffer_x, pp_buffer_y, 0)
             mouse_down = False
             pyautogui.mouseUp()

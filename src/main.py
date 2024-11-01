@@ -79,8 +79,8 @@ def main():
         process_time = curr_time - before_process_time
         mean_process_time = (mean_process_time + process_time) / 2 
 
-        print(" " * 50, end="\r")
-        print(mean_process_time, end="\r")
+        # print(" " * 50, end="\r")
+        # print(mean_process_time, end="\r")
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
